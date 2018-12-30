@@ -16,7 +16,7 @@ Add the component to your declarations :
     ...
   ]`
 
-add `<app-particles></app-particles>` inside the div you wish to cover with particles.
+Add `<app-particles></app-particles>` inside the div you wish to cover with particles.
 
 # Stackblitz demo
 
