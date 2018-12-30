@@ -4,7 +4,7 @@ Edit to your liking.
 
 <b>Usage</b>
 
-add <app-particles></app-particles> inside the div you wish to cover with particles.
+add `<app-particles></app-particles>` inside the div you wish to cover with particles.
 
 <b>Stackblitz demo</b>
 
