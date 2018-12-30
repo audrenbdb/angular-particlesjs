@@ -7,8 +7,11 @@ Edit to your liking.
 Simple example :
 
 Import particles component in your app.module :
+
 `import { ParticlesComponent } from './particles/particles.component';`
+
 Add the component to your declarations :
+
 `declarations: [
     AppComponent,
     ParticlesComponent,
