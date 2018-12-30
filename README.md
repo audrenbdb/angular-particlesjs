@@ -1,4 +1,4 @@
-Ported a standalone component of angular particles with <b>trimmed settings</b> to fit my needs. It probably should use directives at some points.
+Ported a standalone angular component of [particles.js](https://github.com/VincentGarreau/particles.js/) with <b>trimmed settings</b> to fit my needs. It probably should use directives at some points.
 
 Edit to your liking.
 
