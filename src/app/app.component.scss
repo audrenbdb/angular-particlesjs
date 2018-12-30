@@ -1,0 +1,14 @@
+
+.particles-wrapper {
+    position: relative;
+    background:linear-gradient(to right,#1cb5e0,#000046);
+    color: white;
+    width: 600px;
+    height: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 4px;
+    .description {
+        padding:40px;
+    }
+}
