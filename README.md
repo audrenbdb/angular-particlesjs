@@ -8,7 +8,7 @@ Import particles component in your app.module :
 
 `import { ParticlesComponent } from './particles/particles.component';`
 
-Add the component to your declarations :
+Add the component to your declarations inside app.module:
 
 `declarations: [
     AppComponent,
