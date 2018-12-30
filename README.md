@@ -1,32 +1,7 @@
-<<<<<<< HEAD
-# Particles
+Ported a standalone component of angular particles with trimmed settings to fit my needs.
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 7.1.2.
+Edit to your liking.
 
-## Development server
+#Usage
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
-
-## Code scaffolding
-
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
-
-## Build
-
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `--prod` flag for a production build.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protractortest.org/).
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI README](https://github.com/angular/angular-cli/blob/master/README.md).
-=======
-# particles
-Port of the particles.js library from Vincent Garreau for angular 6+
->>>>>>> 56a1d83b2e02c43d11e2374ef400c3c4d7274417
+add <app-particles></app-particles> inside the div you wish to cover with particles.
