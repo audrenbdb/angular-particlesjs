@@ -2,11 +2,11 @@ Ported a standalone component of angular particles with <b>trimmed settings</b> 
 
 Edit to your liking.
 
-<b>Usage</b>
+# Usage
 
 add `<app-particles></app-particles>` inside the div you wish to cover with particles.
 
-<b>Stackblitz demo</b>
+# Stackblitz demo
 
 https://angular-d7nfwj.stackblitz.io
 
