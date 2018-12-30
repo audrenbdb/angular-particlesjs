@@ -4,8 +4,6 @@ Edit to your liking.
 
 # Usage
 
-Simple example :
-
 Import particles component in your app.module :
 
 `import { ParticlesComponent } from './particles/particles.component';`
