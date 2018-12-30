@@ -1,7 +1,7 @@
-Ported a standalone component of angular particles with trimmed settings to fit my needs.
+Ported a standalone component of angular particles with <b>trimmed settings</b> to fit my needs. It probably should use directives at some points.
 
 Edit to your liking.
 
-#Usage
+<b>Usage</b>
 
 add <app-particles></app-particles> inside the div you wish to cover with particles.
