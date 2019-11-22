@@ -158,7 +158,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     const vx = Math.random() - 0.5;
     const vy = Math.random() - 0.5;
 
-    if (x > this.canvas.width - this.size * 2) x += this.size;
+    if (x > this.canvas.width - this.size * 2) x -= this.size;
     else if (x < this.size * 2) x += this.size;
     if (y > this.canvas.height - this.size * 2) y -= this.size;
     else if (y < this.size * 2) y += this.size;
