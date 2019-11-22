@@ -7,7 +7,7 @@ The library has been **trimmed** as much as I could to fit my needs (repulse ver
 ## Usage
 
 - Copy this directive.
-- Import it into your app modules.
+- Import it into your app modules `declarations` array.
 - Inside the div you want to cover with particles, add a canvas element with `repulse-particles` directive such as :
 
 ```
