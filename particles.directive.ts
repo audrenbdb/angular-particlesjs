@@ -31,15 +31,23 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     public el: ElementRef,
     private ngZone: NgZone
   ) {
-    let canvas = this.el.nativeElement;
-    canvas.style.height = "100%";
-    canvas.style.width = "100%";
-    this.canvas = canvas;
-    this.context = canvas.getContext("2d");
-    window.onresize = () => this.setCanvasSize();
+    this.canvas = this.el.nativeElement;
+    this.context = this.canvas.getContext("2d");    
+  }
+
+  ngOnInit() {
+    this.canvas.style.height = "100%";
+    this.canvas.style.width = "100%";
     this.setCanvasSize();
-    this.context.fillRect(0, 0, canvas.width, canvas.height);
-    
+    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ngZone.runOutsideAngular(() => this.particlesDraw());
+    setInterval(() => {
+      this.particlesDraw();
+    }, 6)
+  }
+
+  @HostListener("window:resize") onResize() {
+    this.setCanvasSize();
   }
 
   @HostListener("mouseleave") onMouseLeave() {
@@ -61,12 +69,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     }
   }
 
-  ngOnInit() {
-    this.ngZone.runOutsideAngular(() => this.particlesDraw());
-    setInterval(() => {
-      this.particlesDraw();
-    }, 6)
-  }
+  
 
   
   particlesDraw() {
