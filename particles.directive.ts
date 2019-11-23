@@ -8,11 +8,11 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   @Input() number: number = 80;
   @Input() speed: number = 6;
   @Input() linkWidth: number = 1;
-  @Input() linkDistance: number = 120;
+  @Input() linkDistance: number = 160;
   @Input() size: number = 2;
   @Input() repulseDistance: number = 140;
-  @Input() particleRGBA: string = "rgba(255,255,255, 1)";
-  @Input() linkRGBA: string = "rgba(255, 255,255, .2)";
+  @Input() particleRGB: string = "255, 255, 255";
+  @Input() linkRGB: string = "255, 255, 255";
   @Input() bounce: boolean = true;
 
   interaction = {
@@ -32,12 +32,12 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     private ngZone: NgZone
   ) {
     this.canvas = this.el.nativeElement;
+    this.canvas.style.height = "100%";
+    this.canvas.style.width = "100%";
     this.context = this.canvas.getContext("2d");    
   }
 
   ngOnInit() {
-    this.canvas.style.height = "100%";
-    this.canvas.style.width = "100%";
     this.setCanvasSize();
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ngZone.runOutsideAngular(() => this.particlesDraw());
@@ -70,8 +70,6 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   
-
-  
   particlesDraw() {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.update()
@@ -82,7 +80,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   draw(p) {
-    this.context.fillStyle = this.particleRGBA;
+    this.context.fillStyle = `rgba(${this.particleRGB},1)`;
     this.context.beginPath();
     this.context.arc(p.x, p.y, this.size, 0, Math.PI * 2, false);
     this.context.closePath();
@@ -146,10 +144,12 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   linkParticles(p1, p2) {
+    let opacityValue = 1;
     const dist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     if (dist <= this.linkDistance) {
       if (0.7 - dist / (1 / 0.7) / this.linkDistance > 0) {
-        this.context.strokeStyle = this.linkRGBA;
+        opacityValue = 1 - (dist / 135);
+        this.context.strokeStyle = `rgba(${this.linkRGB}, ${opacityValue})`;
         this.context.lineWidth = this.linkWidth;
         this.context.beginPath();
         this.context.moveTo(p1.x, p1.y);

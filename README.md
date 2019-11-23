@@ -26,8 +26,8 @@ All the following options can be passed as parameters :
 @Input() linkDistance: number;
 @Input() size: number;
 @Input() repulseDistance: number;
-@Input() particleRGBA: string;
-@Input() linkRGBA: string;
+@Input() particleRGB: string;
+@Input() linkRGB: string;
 @Input() bounce: boolean;
 ```
 
