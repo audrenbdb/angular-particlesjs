@@ -1,7 +1,7 @@
-import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit } from '@angular/core';
+import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit } from "@angular/core";
 
 @Directive({
-  selector: '[repulse-particles]'
+  selector: "[repulse-particles]"
 })
 export class ParticlesDirective implements OnDestroy, OnInit {
 
@@ -31,22 +31,6 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     public el: ElementRef,
     private ngZone: NgZone
   ) {
-    
-  }
-
-  @HostListener('mouseleave') onMouseLeave() {
-    this.interaction.pos_x = null;
-    this.interaction.pos_y = null;
-    this.interaction.status = "mouseleave";
-  }
-
-  @HostListener('mousemove', ['$event']) onMouseMove(e) {
-    this.interaction.pos_x = e.offsetX;
-    this.interaction.pos_y = e.offsetY;
-    this.interaction.status = "mousemove";
-  }
-
-  ngOnInit() {
     let canvas = this.el.nativeElement;
     canvas.style.height = "100%";
     canvas.style.width = "100%";
@@ -54,13 +38,30 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.context = canvas.getContext("2d");
     window.onresize = () => this.setCanvasSize();
     this.setCanvasSize();
-
-
     this.context.fillRect(0, 0, canvas.width, canvas.height);
+    
+  }
+
+  @HostListener("mouseleave") onMouseLeave() {
+    this.interaction.pos_x = null;
+    this.interaction.pos_y = null;
+    this.interaction.status = "mouseleave";
+  }
+
+  @HostListener("mousemove", ["$event"]) onMouseMove(e) {
+    this.interaction.pos_x = e.offsetX;
+    this.interaction.pos_y = e.offsetY;
+    this.interaction.status = "mousemove";
+  }
+
+  @HostListener("change") ngOnChanges() {
+    this.particlesList = [];
     for (let i = 0; i < this.number; i++) {
       this.particlesList.push(this.createParticle());
-    }    
+    }
+  }
 
+  ngOnInit() {
     this.ngZone.runOutsideAngular(() => this.particlesDraw());
     setInterval(() => {
       this.particlesDraw();
