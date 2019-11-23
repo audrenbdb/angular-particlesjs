@@ -13,6 +13,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   @Input() repulseDistance: number = 140;
   @Input() particleRGBA: string = "rgba(255,255,255, 1)";
   @Input() linkRGBA: string = "rgba(255, 255,255, .2)";
+  @Input() bounce: boolean = true;
 
   interaction = {
     status: "mouseleave",
@@ -96,20 +97,40 @@ export class ParticlesDirective implements OnDestroy, OnInit {
       p.x += p.vx * ms;
       p.y += p.vy * ms;
 
+      let new_pos = this.bounce ? {
+        x_left : this.size,
+        x_right: this.canvas.width,
+        y_top: this.size,
+        y_bottom: this.canvas.height
+      } : {
+        x_left: -this.size,
+        x_right: this.canvas.width + this.size,
+        y_top: -this.size,
+        y_bottom: this.canvas.height + this.size,
+      }
+
       if (p.x - this.size > this.canvas.width) {
-        p.x = -this.size;
+        p.x = new_pos.x_left;
         p.y = Math.random() * this.canvas.height;
       } else if (p.x + this.size < 0) {
-        p.x = this.canvas.width + this.size;
+        p.x = new_pos.x_right;
         p.y = Math.random() * this.canvas.height;
       }
       if (p.y - this.size > this.canvas.height) {
-        p.y = -this.size;
+        p.y = new_pos.y_top;
         p.x = Math.random() * this.canvas.width;
       } else if (p.y + this.size < 0) {
-        p.y = this.canvas.height + this.size;
+        p.y = new_pos.y_bottom;
         p.x = Math.random() * this.canvas.width;
       }
+
+      if (this.bounce) {
+        if (p.x + this.size > this.canvas.width) p.vx = -p.vx;
+        else if (p.x - this.size < 0) p.vx = -p.vx;
+        if (p.y + this.size > this.canvas.height) p.vy = -p.vy;
+        else if (p.y - this.size < 0) p.vy = -p.vy;
+      }
+
       if (this.interaction.status === "mousemove") {
         this.repulse(p);
       }
@@ -147,9 +168,32 @@ export class ParticlesDirective implements OnDestroy, OnInit {
         ),
         50
       );
-    p.x = p.x + (dx_mouse / dist_mouse) * repulseFactor;
-    p.y = p.y + (dy_mouse / dist_mouse) * repulseFactor;
+    let posX = p.x + (dx_mouse / dist_mouse) * repulseFactor;
+    let posY = p.y + (dy_mouse / dist_mouse) * repulseFactor;
 
+    if (this.bounce) {
+      if(posX - this.size > 0 && posX + this.size < this.canvas.width) p.x = posX;
+      if (posY - this.size > 0 && posY + this.size < this.canvas.height) p.y = posY
+    } else {
+      p.x = posX;
+      p.y = posY;
+    }
+  }
+
+  checkOverlap(p1) {
+    for (let i = 0; i < this.particlesList.length; i++) {
+      let p2 = this.particlesList[i];
+
+      let dx = p1.x - p2.x,
+      dy = p1.y - p2.y,
+      dist = Math.sqrt(dx*dx + dy*dy);
+
+      if (dist <= this.size *2 ) {
+        p1.x = Math.random() * this.canvas.width;
+        p1.y = Math.random() * this.canvas.height;
+        this.checkOverlap(p1);
+      }
+    }
   }
 
   createParticle() {
@@ -163,7 +207,11 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     if (y > this.canvas.height - this.size * 2) y -= this.size;
     else if (y < this.size * 2) y += this.size;
 
-    return {x: x, y: y, vx: vx, vy: vy};
+    let particle = {x: x, y: y, vx: vx, vy: vy};
+
+    if (this.bounce) this.checkOverlap(particle);
+
+    return particle;
   }
 
   setCanvasSize() {
