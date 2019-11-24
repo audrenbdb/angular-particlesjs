@@ -34,11 +34,11 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.canvas = this.el.nativeElement;
     this.canvas.style.height = "100%";
     this.canvas.style.width = "100%";
-    this.context = this.canvas.getContext("2d");    
+    this.context = this.canvas.getContext("2d");   
+    this.setCanvasSize(); 
   }
 
   ngOnInit() {
-    this.setCanvasSize();
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ngZone.runOutsideAngular(() => this.particlesDraw());
     setInterval(() => {
