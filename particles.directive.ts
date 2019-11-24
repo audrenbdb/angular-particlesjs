@@ -1,5 +1,6 @@
 import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit } from "@angular/core";
 
+
 @Directive({
   selector: "[repulse-particles]"
 })
@@ -34,16 +35,17 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.canvas = this.el.nativeElement;
     this.canvas.style.height = "100%";
     this.canvas.style.width = "100%";
-    this.context = this.canvas.getContext("2d");   
-    this.setCanvasSize(); 
+    this.context = this.canvas.getContext("2d"); 
+    this.setCanvasSize();   
   }
 
   ngOnInit() {
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ngZone.runOutsideAngular(() => this.particlesDraw());
+    this.ngZone.runOutsideAngular(() => this.animate()); 
     setInterval(() => {
-      this.particlesDraw();
+      this.animate();
     }, 6)
+    
   }
 
   @HostListener("window:resize") onResize() {
@@ -62,25 +64,20 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.interaction.status = "mousemove";
   }
 
-  @HostListener("change") ngOnChanges() {
+  @HostListener("change", ["$event"]) ngOnChanges(e) {
     this.particlesList = [];
     for (let i = 0; i < this.number; i++) {
       this.particlesList.push(this.createParticle());
     }
   }
 
-  
-  particlesDraw() {
+  animate() {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.update()
-    for (let i = 0, l = this.particlesList.length; i < l; i++) {
-      this.draw(this.particlesList[i]);
-    }
-    this.requestId = requestAnimationFrame(() => this.particlesDraw);
+    this.requestId = requestAnimationFrame(() => this.animate);
   }
 
   draw(p) {
-    this.context.fillStyle = `rgba(${this.particleRGB},1)`;
     this.context.beginPath();
     this.context.arc(p.x, p.y, this.size, 0, Math.PI * 2, false);
     this.context.closePath();
@@ -136,6 +133,9 @@ export class ParticlesDirective implements OnDestroy, OnInit {
       if (this.interaction.status === "mousemove") {
         this.repulse(p);
       }
+
+      this.draw(p);
+
       for (let j = i + 1; j < l; j++) {
         p2 = this.particlesList[j];
         this.linkParticles(p, p2);
@@ -184,22 +184,6 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     }
   }
 
-  checkOverlap(p1) {
-    for (let i = 0; i < this.particlesList.length; i++) {
-      let p2 = this.particlesList[i];
-
-      let dx = p1.x - p2.x,
-      dy = p1.y - p2.y,
-      dist = Math.sqrt(dx*dx + dy*dy);
-
-      if (dist <= this.size *2 ) {
-        p1.x = Math.random() * this.canvas.width;
-        p1.y = Math.random() * this.canvas.height;
-        this.checkOverlap(p1);
-      }
-    }
-  }
-
   createParticle() {
     let x = Math.random() * this.canvas.width;
     let y = Math.random() * this.canvas.height;
@@ -212,15 +196,13 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     else if (y < this.size * 2) y += this.size;
 
     let particle = {x: x, y: y, vx: vx, vy: vy};
-
-    if (this.bounce) this.checkOverlap(particle);
-
     return particle;
   }
 
   setCanvasSize() {
     this.canvas.width = this.canvas.offsetWidth;
     this.canvas.height = this.canvas.offsetHeight;
+    this.context.fillStyle = `rgba(${this.particleRGB},1)`;
   }
 
   ngOnDestroy(): void {
