@@ -1,4 +1,4 @@
-import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit } from "@angular/core";
+import { Directive, ElementRef, Input, OnDestroy, HostListener, OnInit } from "@angular/core";
 
 @Directive({
   selector: "[repulse-particles]"
@@ -30,6 +30,9 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   boundary;
   quadTree;
 
+  particleCanvas: HTMLCanvasElement;
+  particleCanvasContext: CanvasRenderingContext2D;
+
   constructor(
     public el: ElementRef,
   ) {
@@ -38,6 +41,17 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.canvas.style.width = "100%";
     this.context = this.canvas.getContext("2d"); 
     this.particleRGBA = `rgba(${this.particleRGB}, 1)`
+
+    this.particleCanvas = document.createElement("canvas");
+    this.particleCanvas.width = this.size * 2;
+    this.particleCanvas.height = this.size * 2;
+    this.particleCanvasContext = this.particleCanvas.getContext("2d");
+    this.particleCanvasContext.beginPath()
+    this.particleCanvasContext.fillStyle = this.particleRGBA;
+    this.particleCanvasContext.arc(this.size, this.size, this.size, 0, Math.PI * 2, false);
+    this.particleCanvasContext.closePath();
+    this.particleCanvasContext.fill()
+
     this.setCanvasSize();   
   }
 
@@ -79,10 +93,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   draw(p: Particle) {
-    this.context.beginPath();
-    this.context.arc(p.x, p.y, this.size, 0, Math.PI * 2, false);
-    this.context.closePath();
-    this.context.fill();
+    this.context.drawImage(this.particleCanvas, p.x - this.size | 0, p.y - this.size | 0);
   }
 
 
@@ -144,7 +155,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
       this.draw(p);
     }
 
-    let explored = [];
+    let explored: Particle[] = [];
     var i;
     var j;
     for (i = 0; i < this.particlesList.length; i++) {
@@ -165,8 +176,8 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     this.context.strokeStyle = `rgba(${this.linkRGB}, ${opacityValue})`;
     this.context.lineWidth = this.linkWidth;
     this.context.beginPath();
-    this.context.moveTo(p1.x, p1.y);
-    this.context.lineTo(p2.x, p2.y);
+    this.context.moveTo(p1.x | 0, p1.y | 0);
+    this.context.lineTo(p2.x | 0, p2.y | 0);
     this.context.stroke();
     this.context.closePath();
   }
