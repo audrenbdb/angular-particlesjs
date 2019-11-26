@@ -1,4 +1,4 @@
-import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit } from "@angular/core";
+import { Directive, ElementRef, Input, OnDestroy, HostListener, OnInit } from "@angular/core";
 
 
 @Directive({
@@ -6,13 +6,14 @@ import { Directive, ElementRef, Input, OnDestroy, HostListener, NgZone, OnInit }
 })
 export class ParticlesDirective implements OnDestroy, OnInit {
 
-  @Input() number: number = 80;
+  @Input() number: number = 50;
   @Input() speed: number = 6;
   @Input() linkWidth: number = 1;
-  @Input() linkDistance: number = 160;
-  @Input() size: number = 2;
+  @Input() linkDistance: number = 140;
+  @Input() size: number = 3;
   @Input() repulseDistance: number = 140;
   @Input() particleRGB: string = "255, 255, 255";
+  particleRGBA: string = "rgba(255, 255, 255, 1)"
   @Input() linkRGB: string = "255, 255, 255";
   @Input() bounce: boolean = true;
 
@@ -25,27 +26,22 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
 
-  interval;
-  requestId;
+  animationFrame;
 
   constructor(
     public el: ElementRef,
-    private ngZone: NgZone
   ) {
     this.canvas = this.el.nativeElement;
     this.canvas.style.height = "100%";
     this.canvas.style.width = "100%";
     this.context = this.canvas.getContext("2d"); 
+    this.particleRGBA = `rgba(${this.particleRGB}, 1)`
     this.setCanvasSize();   
   }
 
   ngOnInit() {
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ngZone.runOutsideAngular(() => this.animate()); 
-    setInterval(() => {
-      this.animate();
-    }, 6)
-    
+    this.animate();
   }
 
   @HostListener("window:resize") onResize() {
@@ -74,7 +70,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   animate() {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.update()
-    this.requestId = requestAnimationFrame(() => this.animate);
+    this.animationFrame = requestAnimationFrame(this.animate.bind(this));
   }
 
   draw(p) {
@@ -202,12 +198,11 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   setCanvasSize() {
     this.canvas.width = this.canvas.offsetWidth;
     this.canvas.height = this.canvas.offsetHeight;
-    this.context.fillStyle = `rgba(${this.particleRGB},1)`;
+    this.context.fillStyle = this.particleRGBA;
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.interval);
-    cancelAnimationFrame(this.requestId);
+    cancelAnimationFrame(this.animationFrame);
   }
 
 }
