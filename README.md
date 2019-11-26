@@ -39,8 +39,8 @@ Example :
 
 All defaults values can be found in the directive.
 
-## Stackblitz demo
+## Demo & editor
 
-**app** : https://angular-dt2cjg.stackblitz.io
+**demo** : https://audrenbdb.github.io/particles/index.html
 
 **editor** : https://stackblitz.com/edit/angular-dt2cjg
