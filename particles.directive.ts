@@ -1,62 +1,65 @@
 import { Directive, ElementRef, Input, OnDestroy, HostListener, OnInit } from "@angular/core";
 
+/* 
+  Variables to be used outside of directive scope
+  To improve performance.
+*/
+const TAU: number = Math.PI * 2;
+const QUADTREE_CAPACITY: number = 4;
+
+/*
+  Variables to be initiated
+*/
+let linkDistance: number;
+let linkDistance2: number;
+let linkBatches: number;
+let repulseDistance: number;
+let particleSpeed: number;
+let particleSize: number;
+let bounce: boolean;
+let quadTree: QuadTree;
+let mouse: {x: number,y: number} = {x: 0, y: 0};
+let canvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
+
+
+
 @Directive({
   selector: "[repulse-particles]"
 })
 export class ParticlesDirective implements OnDestroy, OnInit {
 
-  @Input() number: number = 80;
+  @Input() number: number = 50;
   @Input() speed: number = 6;
-  @Input() linkWidth: number = 1;
+  @Input() linkWidth: number = .5;
   @Input() linkDistance: number = 160;
   @Input() size: number = 2;
   @Input() repulseDistance: number = 140;
-  @Input() particleRGB: string = "255, 255, 255";
-  particleRGBA: string = "rgba(255, 255, 255, 1)";
-  @Input() linkRGB: string = "255, 255, 255";
+  @Input() particleHex: string = "#FFF";
+  @Input() linkHex: string = "#FFF";
   @Input() bounce: boolean = true;
 
-  interaction = {
-    status: "mouseleave",
-    pos_x: 0,
-    pos_y: 0,
-  };
-  particlesList = [];
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D;
+
+  particlesList: Particle[] = [];
+  links: Link[][] = [[],[],[],[]];
+  linkBatchAlphas: number[] = [.2, .4, .7, .9];
+  linkPool: Link[] = [];
+  candidates: Particle[] = [];
+  boundary: Bounds;
 
   animationFrame;
-
-  boundary;
-  quadTree;
-
-  particleCanvas: HTMLCanvasElement;
-  particleCanvasContext: CanvasRenderingContext2D;
 
   constructor(
     public el: ElementRef,
   ) {
-    this.canvas = this.el.nativeElement;
-    this.canvas.style.height = "100%";
-    this.canvas.style.width = "100%";
-    this.context = this.canvas.getContext("2d"); 
-    this.particleRGBA = `rgba(${this.particleRGB}, 1)`
-
-    this.particleCanvas = document.createElement("canvas");
-    this.particleCanvas.width = this.size * 2;
-    this.particleCanvas.height = this.size * 2;
-    this.particleCanvasContext = this.particleCanvas.getContext("2d");
-    this.particleCanvasContext.beginPath()
-    this.particleCanvasContext.fillStyle = this.particleRGBA;
-    this.particleCanvasContext.arc(this.size, this.size, this.size, 0, Math.PI * 2, false);
-    this.particleCanvasContext.closePath();
-    this.particleCanvasContext.fill()
-
+    canvas = this.el.nativeElement;
+    canvas.style.height = "100%";
+    canvas.style.width = "100%";
+    ctx = canvas.getContext("2d");
     this.setCanvasSize();   
   }
 
   ngOnInit() {
-    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.animate();
   }
 
@@ -65,181 +68,83 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   @HostListener("mouseleave") onMouseLeave() {
-    this.interaction.pos_x = null;
-    this.interaction.pos_y = null;
-    this.interaction.status = "mouseleave";
+    mouse.x = null;
   }
 
   @HostListener("mousemove", ["$event"]) onMouseMove(e) {
-    this.interaction.pos_x = e.offsetX;
-    this.interaction.pos_y = e.offsetY;
-    this.interaction.status = "mousemove";
+    mouse.x = e.offsetX;
+    mouse.y = e.offsetY;
   }
 
   @HostListener("change") ngOnChanges() {
-    this.particlesList = [];
-    for (let i = 0; i < this.number; i++) {
-      let p: Particle = this.createParticle();
-      this.particlesList.push(this.createParticle());
-      this.quadTree.insert(p);
-    }  
+    linkDistance = this.linkDistance;
+    linkDistance2 = (0.7 * linkDistance) ** 2;
+    linkBatches = this.links.length;
+    repulseDistance = this.repulseDistance;
+    particleSpeed = this.speed;
+    particleSize = this.size;
+    bounce = this.bounce;
+    this.resetParticles();
   }
 
 
   animate() {
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.update();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.updateParticles();
+    this.updateLinks();
     this.animationFrame = requestAnimationFrame(this.animate.bind(this));
   }
 
-  draw(p: Particle) {
-    this.context.drawImage(this.particleCanvas, p.x - this.size | 0, p.y - this.size | 0);
+  updateParticles() {
+    quadTree.close();
+    ctx.fillStyle = this.particleHex;
+    ctx.beginPath();
+    for (const p of this.particlesList) p.update(ctx, true);
+    ctx.fill();
   }
 
+  updateLinks() {
+    let i: number;
+    let link: Link;
+    let alphaIdx = 0;
 
-  update() {
-    let p: Particle;
-    let ms = 0;
-    this.quadTree.clear();
-
-    for (let i = 0, l = this.particlesList.length; i < l; i++) {
-      p = this.particlesList[i];
-      ms = this.speed / 2;
-      p.x += p.vx * ms;
-      p.y += p.vy * ms;
-
-      let new_pos = this.bounce ? {
-        x_left: this.size,
-        x_right: this.canvas.width,
-        y_top: this.size,
-        y_bottom: this.canvas.height
-      } : {
-          x_left: -this.size,
-          x_right: this.canvas.width + this.size,
-          y_top: -this.size,
-          y_bottom: this.canvas.height + this.size,
-        }
-
-      if (p.x - this.size > this.canvas.width) {
-        p.x = new_pos.x_left;
-        p.y = Math.random() * this.canvas.height;
-      } else if (p.x + this.size < 0) {
-        p.x = new_pos.x_right;
-        p.y = Math.random() * this.canvas.height;
-      }
-      if (p.y - this.size > this.canvas.height) {
-        p.y = new_pos.y_top;
-        p.x = Math.random() * this.canvas.width;
-      } else if (p.y + this.size < 0) {
-        p.y = new_pos.y_bottom;
-        p.x = Math.random() * this.canvas.width;
-      }
-
-      if (this.bounce) {
-        if (p.x + this.size > this.canvas.width) p.vx = -p.vx;
-        else if (p.x - this.size < 0) p.vx = -p.vx;
-        if (p.y + this.size > this.canvas.height) p.vy = -p.vy;
-        else if (p.y - this.size < 0) p.vy = -p.vy;
-      }
-
-      if (this.interaction.status === "mousemove") {
-        this.repulse(p);
-      }
-
-
-      p.circle.x = p.x;
-      p.circle.y = p.y;
-      p.circle.r = this.linkDistance;
-      this.quadTree.insert(p);
-
-      this.draw(p);
-    }
-
-    let explored: Particle[] = [];
-    var i;
-    var j;
-    for (i = 0; i < this.particlesList.length; i++) {
-      let links = this.quadTree.query(this.particlesList[i].circle)
-      for (j = 0; j < links.length; j++) {
-        if (links[j] !== this.particlesList[i] && !explored.includes(links[j])) {
-          this.linkParticles(this.particlesList[i], links[j]);
+    for (const p1 of this.particlesList) {
+      p1.explored = true;
+      const count = quadTree.query(p1, 0, this.candidates);
+      for (i = 0; i < count; i++) {
+        const p2 = this.candidates[i];
+        if (!p2.explored) {
+          link = this.linkPool.length ? this.linkPool.pop() : new Link();
+          link.init(p1, p2);
+          this.links[link.batchId].push(link);
         }
       }
-      explored.push(this.particlesList[i])
     }
-  }
 
-  linkParticles(p1: Particle, p2: Particle) {
-    let opacityValue = 1;
-    const dist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-    opacityValue = 1 - dist / (.7 * this.linkDistance);
-    this.context.strokeStyle = `rgba(${this.linkRGB}, ${opacityValue})`;
-    this.context.lineWidth = this.linkWidth;
-    this.context.beginPath();
-    this.context.moveTo(p1.x | 0, p1.y | 0);
-    this.context.lineTo(p2.x | 0, p2.y | 0);
-    this.context.stroke();
-    this.context.closePath();
-  }
-
-  repulse(p: Particle) {
-    const dx_mouse = p.x - this.interaction.pos_x,
-      dy_mouse = p.y - this.interaction.pos_y,
-      dist_mouse = Math.sqrt(Math.pow(dx_mouse, 2) + Math.pow(dy_mouse, 2));
-    const velocity = 100,
-      repulseFactor = Math.min(
-        Math.max(
-          (1 / this.repulseDistance) * (-1 * Math.pow(dist_mouse / this.repulseDistance, 2) + 1) * this.repulseDistance * velocity,
-          0
-        ),
-        50
-      );
-    let posX = p.x + (dx_mouse / dist_mouse) * repulseFactor;
-    let posY = p.y + (dy_mouse / dist_mouse) * repulseFactor;
-
-    if (this.bounce) {
-      if (posX - this.size > 0 && posX + this.size < this.canvas.width) p.x = posX;
-      if (posY - this.size > 0 && posY + this.size < this.canvas.height) p.y = posY
-    } else {
-      p.x = posX;
-      p.y = posY;
+    ctx.lineWidth = this.linkWidth;
+    ctx.strokeStyle = this.linkHex;
+    for (const l of this.links) {
+      ctx.globalAlpha = this.linkBatchAlphas[alphaIdx++];
+      ctx.beginPath();
+      while (l.length) this.linkPool.push(l.pop().addPath(ctx));
+      ctx.stroke();
     }
+    ctx.globalAlpha = 1;
   }
 
-  createParticle() {
-    let x = Math.random() * this.canvas.width;
-    let y = Math.random() * this.canvas.height;
-    const vx = Math.random() - 0.5;
-    const vy = Math.random() - 0.5;
-
-    if (x > this.canvas.width - this.size * 2) x -= this.size;
-    else if (x < this.size * 2) x += this.size;
-    if (y > this.canvas.height - this.size * 2) y -= this.size;
-    else if (y < this.size * 2) y += this.size;
-
-    let particle = {
-      x: x,
-      y: y,
-      vx: vx,
-      vy: vy,
-      circle: new Circle(x, y, this.size)
-    };
-
-    return particle;
+  resetParticles() {
+    this.particlesList = [];
+    for (let i = 0; i < this.number; i++) {
+      this.particlesList.push(new Particle(canvas, particleSize))
+    }
+    quadTree = new QuadTree();
+    for (const p of this.particlesList) p.reset(canvas);
   }
 
   setCanvasSize() {
-    this.canvas.width = this.canvas.offsetWidth;
-    this.canvas.height = this.canvas.offsetHeight;
-    this.boundary = new Rectangle(
-      this.canvas.width / 2,
-      this.canvas.height / 2,
-      this.canvas.width,
-      this.canvas.height,
-    );
-    this.quadTree = new QuadTree(this.boundary, 4);
-    this.context = this.canvas.getContext("2d");
-    this.context.fillStyle = this.particleRGBA;
+    canvas.height = canvas.offsetHeight;
+    canvas.width = canvas.offsetWidth;
+    this.resetParticles();
   }
 
   ngOnDestroy(): void {
@@ -247,152 +152,282 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 }
 
-class Circle {
-  x;
-  y;
-  r;
-  constructor(x, y, r) {
-    this.x = x;
-    this.y = y;
-    this.r = r;
+class Link {
+  p1: Particle;
+  p2: Particle;
+  alpha: number;
+  batchId: number;
+  constructor() {  }
+  init(p1: Particle, p2: Particle) {
+      this.p1 = p1;
+      this.p2 = p2;
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      this.alpha = 1 - (dx * dx + dy * dy) / linkDistance2;
+      this.batchId = this.alpha * linkBatches | 0;
+      this.batchId = this.batchId >= linkBatches ? linkBatches : this.batchId;
+  }		
+  addPath(ctx) {
+      ctx.moveTo(this.p1.x, this.p1.y);
+      ctx.lineTo(this.p2.x, this.p2.y);
+      return this;
   }
 
-  contains(point) {
-    let d = Math.pow((point.x - this.x), 2) + Math.pow((point.y - this.y), 2);
-    return d <= this.r * this.r;
-  }
+}
 
+
+class Particle {
+  r: number;
+  speedScale: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  quad: QuadTree;
+  explored: boolean;
+  constructor (canvas, r) {
+      this.r = r;
+      this.speedScale = particleSpeed / 2;
+      this.reset(canvas, r);
+  }
+  reset(canvas, r = this.r) {
+      const W = canvas.width - r * 2;
+      const H = canvas.height - r * 2;
+      this.x = Math.random() * W + r;
+      this.y = Math.random() * H + r;
+      this.vx = Math.random() - 0.5;
+      this.vy = Math.random() - 0.5;
+      this.quad = undefined;
+      this.explored = false;
+
+  }
+  addPath(ctx) {
+      ctx.moveTo(this.x + this.r,  this.y);
+        ctx.arc(this.x,  this.y, this.r, 0, TAU);
+  }
+  near(p) {
+      return ((p.x - this.x) ** 2 + (p.y - this.y) ** 2) <= linkDistance2;
+  }
   intersects(range) {
-    let xDist = Math.abs(range.x - this.x);
-    let yDist = Math.abs(range.y - this.y);
+      const xd = Math.abs(range.x - this.x);
+      const yd = Math.abs(range.y - this.y);
+      const r = linkDistance;
+      const w = range.w;
+      const h = range.h;
+      if (xd > r + w || yd > r + h) { return false }
+      if (xd <= w || yd <= h) { return true }
+      return  ((xd - w) ** 2 + (yd - h) ** 2) <= linkDistance2;
 
-    let r = this.r;
+  }
+  update(ctx, repulse = true) { 
+      this.explored = false;
+      const r = this.r;
+      let W, H;
+      this.x += this.vx * this.speedScale;
+      this.y += this.vy * this.speedScale;
 
-    let w = range.w;
-    let h = range.h;
+      if (bounce) {
+          W = ctx.canvas.width - r;
+          H = ctx.canvas.height - r;
+          if (this.x > W || this.x < 0) {
+              this.vx = -this.vx;
+          } else if (this.y > H || this.y < 0) {
+              this.vy = -this.vy;
+          }
+      } else {
+          W = ctx.canvas.width + r;
+          H = ctx.canvas.height + r;
+          if (this.x > W) {
+              this.x = 0;
+              this.y = Math.random() * (H - r);
+          } else if (this.x < -r) {
+              this.x = W - r;
+              this.y = Math.random() * (H - r);
+          }
+          if (this.y > H) {
+              this.y = 0
+              this.x = Math.random() * (W - r);
+          } else if (this.y < -r) {
+              this.y = H - r;
+              this.x = Math.random() * (W - r);
+          }
+      }
+      repulse && mouse.x && this.repulse();
+      this.addPath(ctx);
+      quadTree.insert(this);
+      this.quad && (this.quad.drawn = false)
+  }
+  repulse() {
+      var dx = this.x - mouse.x;
+      var dy = this.y - mouse.y;
 
-    let edges = Math.pow((xDist - w), 2) + Math.pow((yDist - h), 2);
+      const dist = (dx * dx + dy * dy) ** 0.5;
+      var rf = ((1 - (dist / repulseDistance) ** 2)  * 100);
+          rf = (rf < 0 ? 0 : rf > 50  ? 50 : rf) / dist;
+      
+      var posX = this.x + dx * rf;
+      var posY = this.y + dy * rf;
 
-    if (xDist > (r + w) || yDist > (r + h)) return false;
-    if (xDist <= w || yDist <= h) return true;
-    return edges <= this.r * this.r;
+      if (bounce) {
+          if (posX - particleSize > 0 && posX + particleSize < canvas.width) this.x = posX;
+          if (posY - particleSize > 0 && posY + particleSize < canvas.height) this.y = posY;
+      } else {
+          this.x = posX;
+          this.y = posY;
+      }
   }
 }
 
-interface Particle {
-  x: number,
-  y: number,
-  vx: number,
-  vy: number,
-  circle: Circle,
-}
-
-class Rectangle {
-  x;
-  y;
-  w;
-  h;
-  constructor(x, y, w, h) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
+class Bounds {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  diagonal: number;
+  constructor(x, y, w, h) { this.init(x, y, w, h) }
+  init(x,y,w,h) { 
+      this.x = x; 
+      this.y = y; 
+      this.w = w; 
+      this.h = h; 
+      this.left = x - w;
+      this.right = x + w;
+      this.top = y - h;
+      this.bottom = y + h;
+      this.diagonal = (w * w + h * h);
   }
 
-  contains(point) {
-    return (point.x >= this.x - this.w &&
-      point.x <= this.x + this.w &&
-      point.y >= this.y - this.h &&
-      point.y <= this.y + this.h);
+  contains(p) {
+      return (p.x >= this.left && p.x <= this.right && p.y >= this.top && p.y <= this.bottom);
   }
 
-  intersects(range) {
-    return !(
-      range.x - range.w > this.x + this.w ||
-      range.x + range.w < this.x - this.w ||
-      range.y - range.h > this.y + this.h ||
-      range.y + range.h < this.y - this.h
-    );
+  near(p) {
+      if (!this.contains(p)) {
+          const dx = p.x - this.x;
+          const dy = p.y - this.y;
+          const dist = (dx * dx + dy * dy) - this.diagonal - linkDistance2;
+          return dist < 0;
+      }
+      return true;
   }
 }
 
 class QuadTree {
-  boundary;
-  capacity;
-  points;
+  boundary: Bounds;
+  divided: boolean;
+  points: Particle[];
+  pointCount: number;
+  drawn: boolean;
+  depth: number;
 
-  northWest;
-  northEast;
-  southWest;
-  southEast;
-
-  divided;
-  constructor(boundary, capacity) {
-    this.boundary = boundary;
-    this.capacity = capacity;
-    this.points = [];
-    this.divided = false;
-  }
-
-  insert (point) {
-    if (!this.boundary.contains(point)) return false
-    if (this.points.length < this.capacity) {
-      this.points.push(point)
-      return true
-    }
-    if (!this.divided) {
-      this.subdivide()
-      this.divided = true
-    }
-    if (
-      this.northEast.insert(point) ||
-      this.northWest.insert(point) ||
-      this.southEast.insert(point) ||
-      this.southWest.insert(point)
-    ) { return true }
-  }
-
-  subdivide () {
-    let x = this.boundary.x
-    let y = this.boundary.y
-    let w = this.boundary.w / 2
-    let h = this.boundary.h / 2
-
-    let ne = new Rectangle(x + w, y - h, w, h)
-    let nw = new Rectangle(x - w, y - h, w, h)
-    let se = new Rectangle(x + w, y + h, w, h)
-    let sw = new Rectangle(x - w, y + h, w, h)
-
-    this.northWest = new QuadTree(ne, this.capacity)
-    this.northEast = new QuadTree(nw, this.capacity)
-    this.southWest = new QuadTree(se, this.capacity)
-    this.southEast = new QuadTree(sw, this.capacity)
-
-    this.divided = true
-  }
-
-  query (range, found = []) {
-    if (this.boundary.intersects(range)) {
-      found.push(...this.points.filter((p) => range.contains(p)));
-      if (this.divided) {
-          this.northEast.query(range, found)
-          this.northWest.query(range, found)
-          this.southEast.query(range, found)
-          this.southWest.query(range, found)
+  NE: QuadTree;
+  NW: QuadTree;
+  SE: QuadTree;
+  SW: QuadTree;
+  constructor(boundary: Bounds = new Bounds(canvas.width / 2,canvas.height / 2,canvas.width / 2 ,canvas.height / 2), depth = 0) {
+  this.boundary = boundary;
+      this.divided = false;		
+      this.points = depth > 1 ? [] : null;
+      this.pointCount = 0
+      this.drawn = false;
+      this.depth = depth;
+      if(depth === 0) {   // BM67 Fix on resize
+          this.subdivide();
+          this.NE.subdivide();
+          this.NW.subdivide();
+          this.SE.subdivide();
+          this.SW.subdivide();
       }
-      return found
-    }
   }
 
-  clear () {
-    if (this.divided) {
-      delete this.northEast
-      delete this.northWest
-      delete this.southEast
-      delete this.southWest
-    }
-    this.points = []
-    this.divided = false
+  addPath() {
+      const b = this.boundary;
+      ctx.rect(b.left, b.top, b.w * 2, b.h * 2);
+      this.drawn = true;
+  }
+  addToSubQuad(particle) {
+      if (this.NE.insert(particle)) { return true }
+      if (this.NW.insert(particle)) { return true }
+      if (this.SE.insert(particle)) { return true }
+      if (this.SW.insert(particle)) { return true }	
+      particle.quad = undefined;		
+  }
+  insert(particle) {
+      if (this.depth > 0 && !this.boundary.contains(particle)) { return false }
+      
+      if (this.depth > 1 && this.pointCount < QUADTREE_CAPACITY) { 
+          this.points[this.pointCount++] = particle;
+          particle.quad = this;
+          return true;
+      } 
+      if (!this.divided) { this.subdivide() }
+      return this.addToSubQuad(particle);
   }
 
+  subdivide() {
+      if (!this.NW) {
+          const x = this.boundary.x;
+          const y = this.boundary.y;
+          const w = this.boundary.w / 2;
+          const h = this.boundary.h / 2;
+          const depth = this.depth + 1;
+
+          this.NE = new QuadTree(new Bounds(x + w, y - h, w, h), depth);
+          this.NW = new QuadTree(new Bounds(x - w, y - h, w, h), depth); 
+          this.SE = new QuadTree(new Bounds(x + w, y + h, w, h), depth);
+          this.SW = new QuadTree(new Bounds(x - w, y + h, w, h), depth);
+      } else {
+          this.NE.pointCount = 0;
+          this.NW.pointCount = 0;            
+          this.SE.pointCount = 0;
+          this.SW.pointCount = 0;            
+      }
+
+      this.divided = true;
+  }
+  query(part, fc, found) {
+      var i = this.pointCount;
+      if (this.depth === 0 || this.boundary.near(part)) {
+          if (this.depth > 1) {
+              while (i--) {
+                  const p = this.points[i];
+                  if (!p.explored && part.near(p)) { found[fc++] = p }
+              }
+              if (this.divided) {
+                  fc = this.NE.pointCount ? this.NE.query(part, fc, found) : fc;
+                  fc = this.NW.pointCount ? this.NW.query(part, fc, found) : fc;
+                  fc = this.SE.pointCount ? this.SE.query(part, fc, found) : fc;
+                  fc = this.SW.pointCount ? this.SW.query(part, fc, found) : fc;
+              }
+          } else if(this.divided) {
+              fc = this.NE.query(part, fc, found);
+              fc = this.NW.query(part, fc, found);
+              fc = this.SE.query(part, fc, found);
+              fc = this.SW.query(part, fc, found);
+          }
+      }
+      return fc;
+  }
+
+  close() {
+      if (this.divided) {
+         this.NE.close();
+         this.NW.close();
+         this.SE.close();
+         this.SW.close();
+      }
+    
+      if (this.depth === 2 && this.divided) {
+          this.NE.pointCount = 0;
+          this.NW.pointCount = 0;
+          this.SE.pointCount = 0;
+          this.SW.pointCount = 0;
+      } else if (this.depth > 2) {
+          this.divided = false;
+      }
+  }
 }
