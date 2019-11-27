@@ -32,8 +32,8 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   @Input() number: number = 50;
   @Input() speed: number = 6;
   @Input() linkWidth: number = .5;
-  @Input() linkDistance: number = 160;
-  @Input() size: number = 2;
+  @Input() linkDistance: number = 140;
+  @Input() size: number = 3;
   @Input() repulseDistance: number = 140;
   @Input() particleHex: string = "#FFF";
   @Input() linkHex: string = "#FFF";
@@ -231,7 +231,8 @@ class Particle {
           H = ctx.canvas.height - r;
           if (this.x > W || this.x < 0) {
               this.vx = -this.vx;
-          } else if (this.y > H || this.y < 0) {
+          }
+          if (this.y > H || this.y < 0) {
               this.vy = -this.vy;
           }
       } else {
