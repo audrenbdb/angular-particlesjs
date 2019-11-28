@@ -4,7 +4,7 @@ Port of the particles.js library from Vincent Garreau into a directive.
 
 The library has been **trimmed** and optimized as much as I could (repulse version of the library). There are still quite a few options, listed below.
 
-Performance wise, this directive is a big **upgrade** over the original library.
+Performance wise, this directive is an **upgrade** over the original library.
 
 ## Usage
 
