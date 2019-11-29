@@ -43,6 +43,6 @@ All defaults values can be found in the directive.
 
 ## Demo & editor
 
-**demo** : https://audrenbdb.github.io/particles/index.html
+**demo** : https://audrenbdb.github.io/particles/angular/index.html
 
 **editor** : https://stackblitz.com/edit/angular-dt2cjg
