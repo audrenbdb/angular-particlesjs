@@ -4,7 +4,7 @@ Port of the particles.js library from Vincent Garreau into a directive.
 
 The library has been **trimmed** and optimized as much as I could (repulse version of the library). There are still quite a few options, listed below.
 
-Performance wise, this directive is a **massive upgrade** over the original library, being capable of handling alot more particules at maximum FPS.
+Performance wise, this directive is an **upgrade** over the original library.
 
 ## Usage
 
@@ -46,6 +46,6 @@ All defaults values can be found in the directive.
 
 ## Demo & editor
 
-**demo** : https://audrenbdb.github.io/particles/index.html
+**demo** : https://audrenbdb.github.io/particles/angular/index.html
 
 **editor** : https://stackblitz.com/edit/angular-dt2cjg
