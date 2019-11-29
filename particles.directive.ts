@@ -6,19 +6,20 @@ import { Directive, ElementRef, Input, OnDestroy, HostListener, OnInit } from "@
 */
 const TAU: number = Math.PI * 2;
 const QUADTREE_CAPACITY: number = 4;
+let linkBatches: number = 10;
+let mouse: {x: number,y: number} = {x: 0, y: 0};
+
 
 /*
   Variables to be initiated
 */
 let linkDistance: number;
 let linkDistance2: number;
-let linkBatches: number;
 let repulseDistance: number;
 let particleSpeed: number;
 let particleSize: number;
 let bounce: boolean;
 let quadTree: QuadTree;
-let mouse: {x: number,y: number} = {x: 0, y: 0};
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 
@@ -29,7 +30,7 @@ let ctx: CanvasRenderingContext2D;
 })
 export class ParticlesDirective implements OnDestroy, OnInit {
 
-  @Input() number: number = 50;
+  @Input() number: number = 80;
   @Input() speed: number = 6;
   @Input() linkWidth: number = .5;
   @Input() linkDistance: number = 140;
@@ -38,11 +39,13 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   @Input() particleHex: string = "#FFF";
   @Input() linkHex: string = "#FFF";
   @Input() bounce: boolean = true;
+  @Input() densityArea: number = 800;
 
 
+  particleNumber: number;
   particlesList: Particle[] = [];
-  links: Link[][] = [[],[],[],[]];
-  linkBatchAlphas: number[] = [.2, .4, .7, .9];
+  links: Link[][] = [];
+  linkBatchAlphas: number[] = [];
   linkPool: Link[] = [];
   candidates: Particle[] = [];
   boundary: Bounds;
@@ -56,7 +59,8 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     canvas.style.height = "100%";
     canvas.style.width = "100%";
     ctx = canvas.getContext("2d");
-    this.setCanvasSize();   
+    this.setCanvasSize();
+    this.initVariables();
   }
 
   ngOnInit() {
@@ -76,15 +80,23 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     mouse.y = e.offsetY;
   }
 
-  @HostListener("change") ngOnChanges() {
+  @HostListener("change", ["$event"]) ngOnChanges(e) {
+    this.initVariables();
+    this.resetParticles();
+  }
+
+  initVariables() {
+    for (var i = 1/(linkBatches + 1); i < 1; i += 1/(linkBatches + 1)) {
+      this.links.push([]);
+      this.linkBatchAlphas.push(i);
+    }
     linkDistance = this.linkDistance;
     linkDistance2 = (0.7 * linkDistance) ** 2;
-    linkBatches = this.links.length;
     repulseDistance = this.repulseDistance;
     particleSpeed = this.speed;
     particleSize = this.size;
     bounce = this.bounce;
-    this.resetParticles();
+    this.setParticleNumber();
   }
 
 
@@ -134,16 +146,24 @@ export class ParticlesDirective implements OnDestroy, OnInit {
 
   resetParticles() {
     this.particlesList = [];
-    for (let i = 0; i < this.number; i++) {
+    for (let i = 0; i < this.particleNumber; i++) {
       this.particlesList.push(new Particle(canvas, particleSize))
     }
     quadTree = new QuadTree();
     for (const p of this.particlesList) p.reset(canvas);
   }
 
+  setParticleNumber() {
+    if (this.densityArea) {
+      var area = canvas.width * canvas.height / 1000;
+      this.particleNumber = (area * this.number / this.densityArea) | 0;
+    }
+  }
+
   setCanvasSize() {
     canvas.height = canvas.offsetHeight;
     canvas.width = canvas.offsetWidth;
+    this.setParticleNumber();
     this.resetParticles();
   }
 

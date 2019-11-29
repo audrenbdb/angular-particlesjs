@@ -28,9 +28,12 @@ All the following options can be passed as parameters :
 @Input() linkDistance: number;
 @Input() size: number;
 @Input() repulseDistance: number;
+//hex color
 @Input() particleHex: string;
 @Input() linkHex: string;
 @Input() bounce: boolean;
+//sets to 0 to ignore density
+@Input() densityArea: number;
 ```
 
 Example : 
