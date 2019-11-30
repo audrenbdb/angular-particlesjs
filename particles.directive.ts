@@ -42,7 +42,7 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   @Input() densityArea: number = 800;
 
 
-  particleNumber: number;
+  particlesNumber: number;
   particlesList: Particle[] = [];
   links: Link[][] = [];
   linkBatchAlphas: number[] = [];
@@ -59,6 +59,10 @@ export class ParticlesDirective implements OnDestroy, OnInit {
     canvas.style.height = "100%";
     canvas.style.width = "100%";
     ctx = canvas.getContext("2d");
+    for (var i = 1/(linkBatches + 1); i < 1; i += 1/(linkBatches + 1)) {
+      this.links.push([]);
+      this.linkBatchAlphas.push(i);
+    }
     this.setCanvasSize();
     this.initVariables();
   }
@@ -72,31 +76,43 @@ export class ParticlesDirective implements OnDestroy, OnInit {
   }
 
   @HostListener("mouseleave") onMouseLeave() {
-    mouse.x = null;
+    this.stopMouse()
+  }
+
+  @HostListener("touchend") onTouchEnd() {
+    this.stopMouse()
   }
 
   @HostListener("mousemove", ["$event"]) onMouseMove(e) {
-    mouse.x = e.offsetX;
-    mouse.y = e.offsetY;
+    this.setMousePos(e.offsetX, e.offsetY);
   }
 
-  @HostListener("change", ["$event"]) ngOnChanges(e) {
+  @HostListener("touchmove", ["$event"]) onTouchMove(e) {
+    this.setMousePos(e.touches[0].clientX, e.touches[0].clientY);
+  }
+
+  @HostListener("change") ngOnChanges() {
     this.initVariables();
     this.resetParticles();
   }
 
+  setMousePos(x, y) {
+    mouse.x = x;
+    mouse.y = y;
+  }
+
+  stopMouse() {
+    mouse.x = null;
+  }
+
   initVariables() {
-    for (var i = 1/(linkBatches + 1); i < 1; i += 1/(linkBatches + 1)) {
-      this.links.push([]);
-      this.linkBatchAlphas.push(i);
-    }
     linkDistance = this.linkDistance;
     linkDistance2 = (0.7 * linkDistance) ** 2;
     repulseDistance = this.repulseDistance;
     particleSpeed = this.speed;
     particleSize = this.size;
     bounce = this.bounce;
-    this.setParticleNumber();
+    if (this.densityArea) this.scaleDensity();
   }
 
 
@@ -146,24 +162,22 @@ export class ParticlesDirective implements OnDestroy, OnInit {
 
   resetParticles() {
     this.particlesList = [];
-    for (let i = 0; i < this.particleNumber; i++) {
+    for (let i = 0; i < this.particlesNumber; i++) {
       this.particlesList.push(new Particle(canvas, particleSize))
     }
     quadTree = new QuadTree();
     for (const p of this.particlesList) p.reset(canvas);
   }
 
-  setParticleNumber() {
-    if (this.densityArea) {
+  scaleDensity() {
       var area = canvas.width * canvas.height / 1000;
-      this.particleNumber = (area * this.number / this.densityArea) | 0;
-    }
+      this.particlesNumber = (area * this.number / this.densityArea) | 0;
   }
 
   setCanvasSize() {
     canvas.height = canvas.offsetHeight;
     canvas.width = canvas.offsetWidth;
-    this.setParticleNumber();
+   if (this.densityArea) this.scaleDensity();
     this.resetParticles();
   }
 
